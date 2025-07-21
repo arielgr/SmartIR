@@ -14,6 +14,7 @@ from .controller_const import (
     ESPHOME_CONTROLLER,
     ZHA_CONTROLLER,
     UFOR11_CONTROLLER,
+    TUYA_CONTROLLER,
     ENC_HEX,
     ENC_PRONTO,
     BROADLINK_COMMANDS_ENCODING,
@@ -23,6 +24,7 @@ from .controller_const import (
     ESPHOME_COMMANDS_ENCODING,
     ZHA_COMMANDS_ENCODING,
     UFOR11_COMMANDS_ENCODING,
+    TUYA_COMMANDS_ENCODING,
     CONTROLLER_CONF,
 )
 
@@ -39,6 +41,8 @@ def get_controller(hass, controller, encoding, controller_data):
         ESPHOME_CONTROLLER: ESPHomeController,
         ZHA_CONTROLLER: ZHAController,
         UFOR11_CONTROLLER: UFOR11Controller,
+        TUYA_CONTROLLER: TuyaController,
+
     }
 
     # check controller compatibility
@@ -106,6 +110,14 @@ def get_controller_schema(vol, cv):
                     ESPHOME_CONTROLLER
                 ),
                 vol.Required(CONTROLLER_CONF["ESPHOME_SERVICE"]): cv.string,
+            }
+        ),
+        vol.Schema(
+            {
+                vol.Required(CONTROLLER_CONF["CONTROLLER_TYPE"]): vol.Equal(
+                    TUYA_CONTROLLER
+                ),
+                vol.Required(CONTROLLER_CONF["TUYA_ENTITY"]): cv.entity_id,
             }
         ),
         vol.Schema(
@@ -283,6 +295,23 @@ class ESPHomeController(AbstractController):
             service_data,
         )
 
+class TuyaController(AbstractController):
+    """Controls a Tuya device."""
+
+    def check_encoding(self, encoding):
+        """Check if the encoding is supported by the controller."""
+        if encoding not in TUYA_COMMANDS_ENCODING:
+            raise Exception(
+                "The encoding is not supported by the Tuya controller."
+            )
+
+    async def send(self, command):
+        """Send a command."""
+        service_data = {
+            ATTR_ENTITY_ID: self._controller_data[CONTROLLER_CONF["TUYA_ENTITY"]],
+            "commands": json.loads(command),
+        }
+        await self.hass.services.async_call("tuya", "send_commands", service_data)
 
 class ZHAController(AbstractController):
     """Controls a ZHA device."""
