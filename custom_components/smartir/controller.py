@@ -309,6 +309,7 @@ class TuyaController(AbstractController):
         service_data = {
             ATTR_ENTITY_ID: self._controller_data[CONTROLLER_CONF["TUYA_ENTITY"]],
             'command': command,
+            'device': "raw_b64", #expected by LocalTuya when using raw commands
             'delay_secs': self._controller_data.get("delay_secs", 0.5)
         }
         await self.hass.services.async_call(
