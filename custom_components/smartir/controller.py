@@ -14,6 +14,7 @@ from .controller_const import (
     ESPHOME_CONTROLLER,
     ZHA_CONTROLLER,
     UFOR11_CONTROLLER,
+    TUYA_CONTROLLER,
     ENC_HEX,
     ENC_PRONTO,
     BROADLINK_COMMANDS_ENCODING,
@@ -23,6 +24,7 @@ from .controller_const import (
     ESPHOME_COMMANDS_ENCODING,
     ZHA_COMMANDS_ENCODING,
     UFOR11_COMMANDS_ENCODING,
+    TUYA_COMMANDS_ENCODING,
     CONTROLLER_CONF,
 )
 
@@ -32,6 +34,7 @@ from homeassistant.const import ATTR_ENTITY_ID
 def get_controller(hass, controller, encoding, controller_data):
     """Return a controller compatible with the specification provided."""
     controllers = {
+        TUYA_CONTROLLER: TuyaController,
         BROADLINK_CONTROLLER: BroadlinkController,
         XIAOMI_CONTROLLER: XiaomiController,
         MQTT_CONTROLLER: MQTTController,
@@ -64,6 +67,14 @@ def get_controller_schema(vol, cv):
                 vol.Required(CONTROLLER_CONF["REMOTE_ENTITY"]): cv.entity_id,
                 vol.Optional(CONTROLLER_CONF["NUM_REPEATS"]): cv.positive_int,
                 vol.Optional(CONTROLLER_CONF["DELAY_SECS"]): cv.positive_float,
+           }
+        ),
+        vol.Schema(
+            {
+                vol.Required(CONTROLLER_CONF["CONTROLLER_TYPE"]): vol.Equal(
+                    TUYA_CONTROLLER
+                ),
+                vol.Required(CONTROLLER_CONF["TUYA_ENTITY"]): cv.entity_id,
             }
         ),
         vol.Schema(
@@ -283,6 +294,26 @@ class ESPHomeController(AbstractController):
             service_data,
         )
 
+class TuyaController(AbstractController):
+    """Controls a Tuya device."""
+
+    def check_encoding(self, encoding):
+        """Check if the encoding is supported by the controller."""
+        if encoding not in TUYA_COMMANDS_ENCODING:
+            raise Exception(
+                "The encoding is not supported by the Tuya controller."
+            )
+
+    async def send(self, command):
+        """Send a command using Home Assistant's remote.send_command service."""
+        service_data = {
+            ATTR_ENTITY_ID: self._controller_data[CONTROLLER_CONF["TUYA_ENTITY"]],
+            'command': command,
+            'delay_secs': self._controller_data.get("delay_secs", 0.5)
+        }
+        await self.hass.services.async_call(
+            'remote', 'send_command', service_data
+        )
 
 class ZHAController(AbstractController):
     """Controls a ZHA device."""
